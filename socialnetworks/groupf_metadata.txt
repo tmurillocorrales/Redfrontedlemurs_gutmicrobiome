@@ -1,0 +1,8 @@
+individual 	sex	age_cat
+Bonacca	female	juvenile
+Caicos	male	adult
+Gozo	male	adult
+Lucia	female	adult
+Mayaguana	female	adult
+Pinos	male	adult
+Tortuga	female	adult

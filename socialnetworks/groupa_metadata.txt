@@ -1,0 +1,9 @@
+individuals	sex	age_category
+Amorgos	male	adult
+Isabella	female	adult
+Kea	female	infant
+Lefkada	female	adult
+Luzon	male	adult
+Paros	male	adult
+Thassos	male	juvenile
+Tilos	male	adult

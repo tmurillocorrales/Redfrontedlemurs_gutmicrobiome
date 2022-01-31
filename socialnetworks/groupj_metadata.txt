@@ -1,0 +1,12 @@
+individual	sex	age_cat
+Afganistan	male	juvenile
+Armenia	female	juvenile
+Bahrain	male	juvenile
+Cambodia	female	adult
+Colanta	female	adult
+Kasachstan	male	juvenile
+Kuwait	male	adult
+Mongolei	male	adult
+Pakistan	male	adult
+Syria	female	adult
+Taji	female	adult

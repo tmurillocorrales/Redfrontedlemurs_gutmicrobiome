@@ -1,0 +1,11 @@
+individual	sex	age_category
+Adonara	female	juvenile
+Aloha	female	adult
+Bangladesh	male	adult
+Bora	female	adult
+Buru	male	adult
+Jaco	male	juvenile
+Latalata	female	juvenile
+Oman	male	adult
+Rinca	female	adult
+Tilos	male	adult
