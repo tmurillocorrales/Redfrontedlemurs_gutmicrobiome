@@ -5,6 +5,7 @@ This project included the processing and analysis of 16S and 18S generated ampli
 respective folders including their metadata. The ASV tables for the analyis can downloaded from Figshare: 
 
 16S_ASV_table.txt -> DOI: 10.6084/m9.figshare.19095968
-18S_BLCA_ASV_table -> 
+
+18S_BLCA_ASV_table -> DOI: 10.6084/m9.figshare.19095995
 
 The results from this analysis were submitted for peer review.
