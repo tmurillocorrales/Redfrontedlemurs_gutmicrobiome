@@ -8,4 +8,6 @@ respective folders including their metadata. The ASV tables for the analyis can 
 
 18S_BLCA_ASV_table -> DOI: 10.6084/m9.figshare.19095995
 
-The results from this analysis were submitted for peer review.
+Additionally linear mixed models and social networks analysis were performed. The R scripts and data frames can be found in the respective folders.
+
+The results from this project were submitted for peer review.
