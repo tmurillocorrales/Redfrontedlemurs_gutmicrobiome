@@ -29,7 +29,26 @@ mymetadata = read.table("16S_metadata.csv", sep=",", header=T, comment.char = ""
 #Metadata with behavioral data
 mymetadata2 = read.table("metadata_alphadiv_socint_para_feed.txt", sep="\t", header=T, comment.char = "", quote = "\"")
 
+################
+
+#Figure -> samples per individual per month -> Supplementary table S1
+sample_counts = mymetadata2 %>% group_by(month_year) %>% count(individual)
+ggplot(sample_counts, aes(x=individual, y=n, colour = month_year)) + geom_jitter(width = 0.25, size = 4, alpha = 1/1.5, height = 0.25)+
+    ylab("Sample counts") + xlab("Individual")+
+      theme(axis.text.x = element_text(angle = 75, hjust = 1, size = 12), axis.title.x = element_text(size = 14),
+            axis.text.y = element_text(size = 12), axis.title.y = element_text(size = 14))
+
+#Figure -> samples per group per month
+group_counts = mymetadata2 %>% group_by(month_year) %>% count(group)
+ggplot(group_counts, aes(x=group, y=n, colour = month_year)) + geom_jitter(width = 0.25, size = 6, alpha = 1/1.5, height = 0.25)+
+  ylab("Sample counts") + xlab("Group")+
+  scale_y_continuous(breaks=seq(0,40,5))+
+  theme(axis.text.x = element_text(size = 12), axis.title.x = element_text(size = 14),
+        axis.text.y = element_text(size = 12), axis.title.y = element_text(size = 14))
+
+###############  
 # Modify data for ampvis2
+
 # Get taxonomy from OTU table
 row.names(myotutable)=myotutable$`#OTU ID`
 tax_info = data.matrix(myotutable$taxonomy)
@@ -201,14 +220,214 @@ dataset2 = amp_load(otutable = myotutable,
                     metadata = mymetadata2,
                     tree = tree)
 dataset2
-#After filtering and removing spuriours reads -> 799 samples, 1028 OTUs and minimum reads 8236.
+#After filtering and removing spurious reads -> 799 samples, 1028 OTUs and minimum reads 8236.
 
 ### Rarefy ####
+
+#Create rarefaction curves
+amp_rarecurve(dataset2, facet_by = "group", facet_scales = "free_x") + 
+  geom_line(size=1) + 
+  geom_vline(xintercept = 8236, linetype = "dashed", colour = "orange", size = 2)+ #minimum amount of reads
+  theme_bw()+
+  theme(strip.text.x = element_text(size=12), axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 12),
+        axis.title.x = element_text(size = 14), axis.title.y = element_text(size=14))
+
 #Rarefy to minimum amount of reads (8236)
 subset_rarefy2 <- amp_subset_samples(dataset2, minreads = 8236, rarefy = 8236, normalise = FALSE, removeAbsents = TRUE)
 #Check object
 subset_rarefy2
 #799 samples
+
+## Analysis migrating individuals ####
+
+#Subset group A
+groupa_rar = amp_subset_samples(subset_rarefy2, group %in% c("A"))
+amorgos= amp_subset_samples(groupa_rar, month_year %in% c("03_Mar19", "04_Apr19"))
+#24 samples & 927 OTUs
+
+#Merge samples per month
+#Merge all triplicates of each individual per month.
+#IN ORDER FOR THE MERGE FUNCTION TO WORK THE SAMPLE ID COLUMN SHOULD BE TITLED SampleID.
+
+#Use merge functions from ampvis2
+dataset_merge <- amp_mergereplicates(amorgos, merge_var = "individual_month")
+#15 samples
+
+#Calculate PCoA in Ampvis to otain the unifrac matrix
+pcoa_a = amp_ordinate(dataset_merge,
+                      num_threads = 4,
+                      type = "PCOA",
+                      distmeasure = "wunifrac",
+                     sample_color_by = "individual",
+                    #  sample_shape_by = "individual",
+                      transform = "none",
+                      sample_colorframe = FALSE,
+                      sample_point_size = 4,
+                      detailed_output = T)
+
+pcoa_a
+
+## Extract metadata from PCOA ###
+metadata2_a = pcoa_a$dsites
+#Extract columns from metadata -> date and SampleID
+data_a = metadata2_a[c('SampleID', 'date', 'individual', 'month_year')]
+#Set date column to date format
+data_a$date = as.Date(data_a$date, format = "%m/%d/%Y")
+str(data_a)
+
+library(lubridate)
+#Calculate date differences
+data_a$time_interval = difftime(data_a$date, as.Date("2019-03-20", "%Y-%m-%d"), units = "days")
+
+#Remove rownames
+rownames(data_a) = NULL
+
+#Create from pcoa axis from figure
+pcoa_a2 = as.matrix(pcoa_a$model$vectors)
+pcoa_a2 = as.data.frame(pcoa_a2)
+#Create new dataframe with rownames and first column
+pcoa_a3 = pcoa_a2[c(1)]
+#Convert rownames to column
+pcoa_a3$SampleID = rownames(pcoa_a3)
+#Remove rownames
+rownames(pcoa_a3) = NULL
+
+#Bind tables
+groupa_distance = left_join(data_a, pcoa_a3, by = "SampleID", keep = FALSE)
+
+#Create scatter plot
+a = ggplot(groupa_distance, aes(x=month_year, y=Axis.1, colour = individual)) + geom_point(size = 6, alpha = 1/1.2)+
+  ylab("PCoA1") + xlab("Month of sample collection")+
+  ggtitle("Group A") +
+  scale_color_viridis_d(option = "C", begin= 0, end = 0.8) +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1, size = 14), axis.title.x = element_text(size = 16),
+        axis.text.y = element_text(size = 14), axis.title.y = element_text(size = 16), plot.title = element_text(size=18, hjust = 0.5))
+a
+
+## Group B ###
+#Subset group B
+groupb_rar = amp_subset_samples(subset_rarefy2, group %in% c("B"))
+groupb_rar= amp_subset_samples(groupb_rar, month_year %in% c("05_May18", "06_Jun18", "07_July18", "08_Aug18", "09_Sep18", "10_Oct18",
+                                                             "11_Nov18", "12_Dec18"))
+#169 samples
+
+#Merge samples per month
+#Merge all triplicates of each individual per month.
+#IN ORDER FOR THE MERGE FUNCTION TO WORK THE SAMPLE ID COLUMN SHOULD BE TITLED SampleID.
+
+#Use merge functions from ampvis2
+dataset_merge <- amp_mergereplicates(groupb_rar, merge_var = "individual_month")
+#62 samples
+
+#Calculate PCoA in Ampvis to obtain the unifrac matrix
+pcoa_b = amp_ordinate(dataset_merge,
+                      num_threads = 4,
+                      type = "PCOA",
+                      distmeasure = "wunifrac",
+                      sample_color_by = "individual",
+                   #   sample_shape_by = "group",
+                      transform = "none",
+                      sample_colorframe = FALSE,
+                      sample_point_size = 4,
+                      detailed_output = T)
+
+pcoa_b
+
+## Extract metadata from PCOA ###
+metadata2_b = pcoa_b$dsites
+#Extract columns from metadata -> date and SampleID
+data_b = metadata2_b[c('SampleID', 'date', 'individual', 'month_year')]
+#Set date column to date format
+data_b$date = as.Date(data_b$date, format = "%m/%d/%Y")
+str(data_b)
+#Remove rownames
+rownames(data_b) = NULL
+
+#Create from pcoa axis from figure
+pcoa_b2 = as.matrix(pcoa_b$model$vectors)
+pcoa_b2 = as.data.frame(pcoa_b2)
+#Create new dataframe with rownames and first column
+pcoa_b3 = pcoa_b2[c(1)]
+#Convert rownames to column
+pcoa_b3$SampleID = rownames(pcoa_b3)
+#Remove rownames
+rownames(pcoa_b3) = NULL
+
+#Bind tables
+groupb_distance = left_join(data_b, pcoa_b3, by = "SampleID", keep = FALSE)
+
+#Create scatter plot
+b = ggplot(groupb_distance, aes(x=month_year, y=Axis.1, colour = individual)) + geom_point(size = 6, alpha = 1/1.2)+ 
+  ylab("PCoA1") + xlab("Month of sample collection")+
+  ggtitle("Group B") +
+  scale_color_viridis_d(option = "C", begin= 0, end = 0.8) +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1, size = 14), axis.title.x = element_text(size = 16),
+        axis.text.y = element_text(size = 14), axis.title.y = element_text(size = 16), plot.title = element_text(size=18, hjust = 0.5))
+
+b
+
+## Group F ###
+#Subset group F
+groupf_rar = amp_subset_samples(subset_rarefy2, group %in% c("F"))
+groupf_rar= amp_subset_samples(groupf_rar, month_year %in% c("05_May18", "06_Jun18", "07_July18"))
+#59 samples
+
+#Merge samples per month
+#Merge all triplicates of each individual per month.
+#IN ORDER FOR THE MERGE FUNCTION TO WORK THE SAMPLE ID COLUMN SHOULD BE TITLED SampleID.
+
+#Use merge functions from ampvis2
+dataset_merge <- amp_mergereplicates(groupf_rar, merge_var = "individual_month")
+#62 samples
+
+#Calculate PCoA in Ampvis to obtain the unifrac matrix
+pcoa_f = amp_ordinate(dataset_merge,
+                      num_threads = 4,
+                      type = "PCOA",
+                      distmeasure = "wunifrac",
+                      sample_color_by = "individual",
+                      #   sample_shape_by = "group",
+                      transform = "none",
+                      sample_colorframe = FALSE,
+                      sample_point_size = 4,
+                      detailed_output = T)
+
+pcoa_f
+
+## Extract metadata from PCOA ###
+metadata2_f = pcoa_f$dsites
+#Extract columns from metadata -> date and SampleID
+data_f = metadata2_f[c('SampleID', 'date', 'individual', 'month_year')]
+#Set date column to date format
+data_f$date = as.Date(data_f$date, format = "%m/%d/%Y")
+str(data_f)
+#Remove rownames
+rownames(data_f) = NULL
+
+#Create from pcoa axis from figure
+pcoa_f2 = as.matrix(pcoa_f$model$vectors)
+pcoa_f2 = as.data.frame(pcoa_f2)
+#Create new dataframe with rownames and first column
+pcoa_f3 = pcoa_f2[c(1)]
+#Convert rownames to column
+pcoa_f3$SampleID = rownames(pcoa_f3)
+#Remove rownames
+rownames(pcoa_f3) = NULL
+
+#Bind tables
+groupf_distance = left_join(data_f, pcoa_f3, by = "SampleID", keep = FALSE)
+
+#Create scatter plot
+f = ggplot(groupf_distance, aes(x=month_year, y=Axis.1, colour = individual)) + geom_point(size = 6, alpha = 1/1.2)+ 
+  ylab("PCoA1") + xlab("Month of sample collection")+
+  ggtitle("Group F") +
+  scale_color_viridis_d(option = "C", begin= 0, end = 0.8) +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1, size = 14), axis.title.x = element_text(size = 16),
+        axis.text.y = element_text(size = 14), axis.title.y = element_text(size = 16), plot.title = element_text(size=18, hjust = 0.5))
+
+### GRoup plots ##
+library(gridExtra)
+grid.arrange(a,b,f, nrow = 1)
 
 ### Calculate PCOA ####
 # All samples ####
